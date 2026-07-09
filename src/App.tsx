@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, type FormEvent, type VideoHTMLAttributes, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import RippleTrail from './components/RippleTrail'
 import StaggeredMenu from './components/StaggeredMenu'
@@ -40,6 +40,13 @@ const yachts = [
       { label: 'Crew', value: '14' },
     ],
   },
+]
+
+const preloadVideoSources = [
+  '/media/hero.mp4',
+  '/media/fleet-glass-backdrop.mp4',
+  '/media/fleet-motion-clean.mp4',
+  ...yachts.map((yacht) => yacht.src),
 ]
 
 const navigation = [
@@ -90,11 +97,18 @@ const emptyContactFormData: ContactFormData = {
 
 const contactDraftStorageKey = 'my-yacht-contact-draft-id'
 
+function createFallbackUuid() {
+  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (char) => {
+    const random = Math.floor(Math.random() * 16)
+    return (Number(char) ^ (random & (15 >> (Number(char) / 4)))).toString(16)
+  })
+}
+
 function createContactDraftId() {
   const existing = window.sessionStorage.getItem(contactDraftStorageKey)
   if (existing) return existing
 
-  const id = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const id = window.crypto?.randomUUID?.() ?? createFallbackUuid()
   window.sessionStorage.setItem(contactDraftStorageKey, id)
   return id
 }
@@ -191,24 +205,36 @@ const pageContent: Record<string, {
   },
 }
 
-function YachtVideo({ src, label }: { src: string; label: string }) {
+type EagerVideoProps = VideoHTMLAttributes<HTMLVideoElement> & {
+  src: string
+}
+
+function EagerVideo({ src, preload = 'auto', ...props }: EagerVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) void video.play().catch(() => undefined)
-        else video.pause()
-      },
-      { threshold: 0.15 },
-    )
+    const playVideo = () => {
+      void video.play().catch(() => undefined)
+    }
 
-    observer.observe(video)
-    return () => observer.disconnect()
-  }, [])
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'auto'
+    video.load()
+    playVideo()
+    video.addEventListener('loadeddata', playVideo)
+    video.addEventListener('canplay', playVideo)
+    document.addEventListener('visibilitychange', playVideo)
+
+    return () => {
+      video.removeEventListener('loadeddata', playVideo)
+      video.removeEventListener('canplay', playVideo)
+      document.removeEventListener('visibilitychange', playVideo)
+    }
+  }, [src])
 
   return (
     <video
@@ -218,23 +244,49 @@ function YachtVideo({ src, label }: { src: string; label: string }) {
       muted
       loop
       playsInline
-      preload="metadata"
+      preload={preload}
+      {...props}
+    />
+  )
+}
+
+function YachtVideo({ src, label }: { src: string; label: string }) {
+  return (
+    <EagerVideo
+      src={src}
       aria-label={label}
     />
   )
+}
+
+function VideoPreloads() {
+  useEffect(() => {
+    const links = preloadVideoSources.map((src) => {
+      const link = document.createElement('link')
+      link.rel = 'preload'
+      link.as = 'video'
+      link.href = src
+      link.type = 'video/mp4'
+      link.dataset.myYachtPreload = src
+      document.head.appendChild(link)
+      return link
+    })
+
+    return () => {
+      links.forEach((link) => link.remove())
+    }
+  }, [])
+
+  return null
 }
 
 function FleetVideoShowcase() {
   return (
     <section className="fleet-motion" aria-labelledby="fleet-motion-title">
       <div className="fleet-motion-bg" aria-hidden="true">
-        <video
+        <EagerVideo
           className="fleet-motion-bg-video"
           src="/media/fleet-motion-clean.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
         />
         <div className="fleet-motion-bg-scrim" />
       </div>
@@ -264,13 +316,9 @@ function FleetVideoShowcase() {
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.8, delay: 0.08 }}
       >
-        <video
+        <EagerVideo
           className="fleet-motion-stage-video"
           src="/media/fleet-motion-clean.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
           aria-label="Yacht underway over blue ocean water"
         />
         <div className="fleet-motion-feature-copy">
@@ -322,19 +370,9 @@ function FleetSection({ standalone = false }: { standalone?: boolean }) {
   return (
     <section id="fleet" className={`fleet ${standalone ? 'fleet-standalone' : ''}`} aria-labelledby="fleet-title">
       <div className="fleet-backdrop" aria-hidden="true">
-        <img
-          className="fleet-backdrop-image"
-          src="/images/fleet-glass-backdrop.jpeg"
-          alt=""
-        />
-        <video
+        <EagerVideo
           className="fleet-backdrop-video"
           src="/media/fleet-glass-backdrop.mp4"
-          poster="/images/fleet-glass-backdrop.jpeg"
-          autoPlay
-          muted
-          loop
-          playsInline
         />
         <div className="fleet-backdrop-scrim" />
       </div>
@@ -426,13 +464,9 @@ function HomePage() {
   return (
     <>
       <section id="top" className="hero" aria-labelledby="hero-title">
-        <video
+        <EagerVideo
           className="hero-video"
           src="/media/hero.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
           aria-label="Luxury yacht cruising at sea"
         />
         <div className="hero-scrim" />
@@ -742,7 +776,7 @@ function YachtSpecsPage({ yacht }: { yacht: (typeof yachts)[number] }) {
   return (
     <>
       <section className="spec-hero" aria-labelledby="spec-title">
-        <video className="spec-hero-video" src={yacht.src} autoPlay muted loop playsInline />
+        <EagerVideo className="spec-hero-video" src={yacht.src} />
         <div className="spec-hero-scrim" />
         <div className="spec-hero-content">
           <a className="spec-back eyebrow" href="/fleet">Back to fleet</a>
@@ -937,8 +971,6 @@ function FleetPage() {
           </motion.article>
         ))}
       </section>
-
-      <FleetVideoShowcase />
     </>
   )
 }
@@ -1015,6 +1047,7 @@ export default function App() {
 
   return (
     <>
+      <VideoPreloads />
       <RippleTrail />
       <StaggeredMenu isOpen={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
 

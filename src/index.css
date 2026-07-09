@@ -313,7 +313,6 @@ a:focus-visible, button:focus-visible {
 .fleet-standalone { padding-top: clamp(4rem, 7vw, 7rem); }
 
 .fleet-backdrop,
-.fleet-backdrop-image,
 .fleet-backdrop-video,
 .fleet-backdrop-scrim {
   position: absolute;
@@ -326,15 +325,10 @@ a:focus-visible, button:focus-visible {
   pointer-events: none;
 }
 
-.fleet-backdrop-image,
 .fleet-backdrop-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.fleet-backdrop-image {
-  transform: scale(1.02);
 }
 
 .fleet-backdrop-video {
