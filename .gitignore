@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.vercel
+.vercel/
+node_modules/
+dist/
+work/
+outputs/
+*.log
+npm-debug.log*
