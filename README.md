@@ -8,15 +8,15 @@ An immersive luxury private-yacht web experience with a full-stack enquiry syste
 
 ### Home
 
-![MY YACHT home hero](public/screenshots/home-hero.png)
+![MY YACHT home hero](public/screenshots/pic1.png)
 
 ### Fleet
 
-![MY YACHT fleet showcase](public/screenshots/fleet-showcase.png)
+![MY YACHT fleet showcase](public/screenshots/pic3.png)
 
 ### Private Enquiry
 
-![MY YACHT private enquiry page](public/screenshots/private-enquiry.png)
+![MY YACHT private enquiry page](public/screenshots/pic5.png)
 
 ## Overview
 
